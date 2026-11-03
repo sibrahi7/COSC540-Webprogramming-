@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adaptive Calendar</title>
+
+   <style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 28px;
+    font-family: Arial, sans-serif;
+    color: #342d29;
+    background: #fff8f2;
+  }
+
+  h1 {
+    margin-bottom: 0;
+    padding: 26px;
+    text-align: center;
+    background: #f6cfb4;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .byline {
+    margin-top: 0;
+    padding: 0 20px 22px;
+    font-size: 14px;
+    text-align: center;
+    background: #f6cfb4;
+    border-radius: 0 0 16px 16px;
+  }
+
+  label {
+    display: inline-block;
+    margin-top: 18px;
+    font-weight: bold;
+  }
+
+  select {
+    margin: 8px;
+    padding: 10px;
+    font: inherit;
+    color: #342d29;
+    background: white;
+    border: 1px solid #bda38f;
+    border-radius: 8px;
+  }
+
+  #showCalendar {
+    margin: 8px;
+    padding: 12px 18px;
+    font: inherit;
+    font-weight: bold;
+    color: white;
+    background: #874b30;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  #showCalendar:hover {
+    background: #683821;
+  }
+
+  #calendarTitle {
+    margin-top: 30px;
+    text-align: center;
+  }
+
+  #calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  #calendar > div {
+    padding: 18px 6px;
+    text-align: center;
+    overflow-wrap: anywhere;
+    background: white;
+    border: 1px solid #bda38f;
+    border-radius: 8px;
+  }
+
+  #calendar > .weekday {
+    font-size: 14px;
+    font-weight: bold;
+    background: #f6cfb4;
+  }
+
+  .dateCell {
+    cursor: pointer;
+  }
+
+  #calendar > .dateCell:hover,
+  #calendar > .dateCell:focus-visible {
+    background: #ffe6d3;
+    outline: 2px solid #874b30;
+  }
+
+  #overlay[hidden] {
+    display: none;
+  }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #eventBox {
+    position: relative;
+    width: 500px;
+    max-width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.25);
+  }
+
+  #eventTitle {
+    padding-right: 20px;
+  }
+
+  #closeOverlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
+    color: #342d29;
+    background: #fff0e5;
+    border: 1px solid #bda38f;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #closeOverlay:hover {
+    background: #f6cfb4;
+  }
+
+  #eventText {
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 600px) {
+    body {
+      margin: 12px auto;
+      padding: 12px;
+    }
+
+    h1 {
+      font-size: 26px;
+    }
+
+    #calendar {
+      gap: 5px;
+    }
+
+    #calendar > div {
+      padding: 12px 3px;
+    }
+
+    #calendar > .weekday {
+      font-size: 11px;
+    }
+  }
+</style>
+</head>
+
+<body>
+  <h1>Adaptive Calendar</h1>
+  <p class="byline">by Salma Ibrahim</p>
+
+  <label for="startDay">Start day:</label>
+  <select id="startDay">
+    <option value="0">Sunday</option>
+    <option value="1">Monday</option>
+    <option value="2">Tuesday</option>
+    <option value="3">Wednesday</option>
+    <option value="4">Thursday</option>
+    <option value="5">Friday</option>
+    <option value="6">Saturday</option>
+  </select>
+
+  <label for="month">Month:</label>
+  <select id="month">
+    <option value="0">January</option>
+    <option value="1">February</option>
+    <option value="2">March</option>
+    <option value="3">April</option>
+    <option value="4">May</option>
+    <option value="5">June</option>
+    <option value="6">July</option>
+    <option value="7">August</option>
+    <option value="8">September</option>
+    <option value="9">October</option>
+    <option value="10">November</option>
+    <option value="11">December</option>
+  </select>
+
+  <label for="year">Year:</label>
+  <select id="year"></select>
+
+  <button id="showCalendar" type="button">Show Calendar</button>
+
+  <h2 id="calendarTitle"></h2>
+  <div id="calendar"></div>
+
+  <div id="overlay" hidden>
+    <div id="eventBox"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="eventTitle">
+      <button id="closeOverlay" type="button" aria-label="Close">×</button>
+      <h2 id="eventTitle"></h2>
+      <p id="eventText" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const yearSelect = document.getElementById("year");
+
+    // Fill the year dropdown.
+    for (let year = 1900; year <= 2025; year++) {
+      const option = document.createElement("option");
+      option.value = year;
+      option.textContent = year;
+      yearSelect.appendChild(option);
+    }
+
+    const showButton = document.getElementById("showCalendar");
+    const calendar = document.getElementById("calendar");
+    const overlay = document.getElementById("overlay");
+    const closeButton = document.getElementById("closeOverlay");
+    const eventText = document.getElementById("eventText");
+
+    let clickedCell = null;
+    let requestNumber = 0;
+
+    showButton.addEventListener("click", function () {
+      const selectedMonth = document.getElementById("month");
+      const selectedYear = document.getElementById("year").value;
+
+      const monthNumber = Number(selectedMonth.value);
+      const yearNumber = Number(selectedYear);
+
+      const daysInMonth =
+        new Date(yearNumber, monthNumber + 1, 0).getDate();
+
+      const firstWeekday =
+        new Date(yearNumber, monthNumber, 1).getDay();
+
+      const chosenStartDay =
+        Number(document.getElementById("startDay").value);
+
+      const emptyCells =
+        (firstWeekday - chosenStartDay + 7) % 7;
+
+      const monthName =
+        selectedMonth.options[selectedMonth.selectedIndex].text;
+
+      document.getElementById("calendarTitle").textContent =
+        `${monthName} ${yearNumber}`;
+
+      // Clear the previous calendar.
+      calendar.replaceChildren();
+
+      const weekdays = [
+        "Sunday", "Monday", "Tuesday", "Wednesday",
+        "Thursday", "Friday", "Saturday"
+      ];
+
+      // Add weekday headings in the selected order.
+      for (let column = 0; column < 7; column++) {
+        const weekday = document.createElement("div");
+        weekday.className = "weekday";
+        weekday.textContent =
+          weekdays[(chosenStartDay + column) % 7];
+        calendar.appendChild(weekday);
+      }
+
+      // Add blank cells before day 1.
+      for (let i = 0; i < emptyCells; i++) {
+        const blank = document.createElement("div");
+        calendar.appendChild(blank);
+      }
+
+      // Add clickable date cells.
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateCell = document.createElement("div");
+        dateCell.className = "dateCell";
+        dateCell.textContent = day;
+        dateCell.tabIndex = 0;
+        dateCell.setAttribute("role", "button");
+        dateCell.setAttribute(
+          "aria-label", `${monthName} ${day}, ${yearNumber}`
+        );
+
+        function openEvents() {
+          const fullDate = `${monthName} ${day}, ${yearNumber}`;
+          const currentRequest = ++requestNumber;
+          clickedCell = dateCell;
+
+          document.getElementById("eventTitle").textContent = fullDate;
+          eventText.textContent = "Loading historical events...";
+          overlay.hidden = false;
+          closeButton.focus();
+
+          const question =
+            `What major events happened on ${fullDate}? ` +
+            "Use the exact month, day, and year. " +
+            "Give up to three brief events in plain text. " +
+            "If you do not know any reliably, say so.";
+
+          fetch("events.php?query=" + encodeURIComponent(question))
+            .then(function (response) {
+              if (!response.ok) {
+                return response.text().then(function (message) {
+                  throw new Error(message);
+                });
+              }
+
+              return response.text();
+            })
+            .then(function (reply) {
+              if (currentRequest === requestNumber && !overlay.hidden) {
+                eventText.textContent = reply;
+              }
+            })
+            .catch(function (error) {
+              if (currentRequest === requestNumber && !overlay.hidden) {
+                eventText.textContent =
+                  "Could not load events: " + error.message;
+              }
+            });
+        }
+
+        dateCell.addEventListener("click", openEvents);
+
+        dateCell.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openEvents();
+          }
+        });
+
+        calendar.appendChild(dateCell);
+      }
+
+      // Complete the final row with blank cells.
+      const endingBlanks = (7 - (emptyCells + daysInMonth) % 7) % 7;
+
+      for (let i = 0; i < endingBlanks; i++) {
+        const blank = document.createElement("div");
+        calendar.appendChild(blank);
+      }
+    });
+
+    function closeOverlay() {
+      overlay.hidden = true;
+      requestNumber++;
+
+      if (clickedCell) {
+        clickedCell.focus();
+      }
+    }
+
+    closeButton.addEventListener("click", closeOverlay);
+
+    document.addEventListener("keydown", function (event) {
+      if (!overlay.hidden && event.key === "Escape") {
+        closeOverlay();
+      }
+
+      // Keep keyboard focus on the close button while the overlay is open.
+      if (!overlay.hidden && event.key === "Tab") {
+        event.preventDefault();
+        closeButton.focus();
+      }
+    });
+  </script>
+</body>
+</html>
